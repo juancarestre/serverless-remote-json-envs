@@ -34,9 +34,19 @@ class RemoteJSONEnvs {
         this.serverless.service.provider.compiledCloudFormationTemplate
           .Resources[lambda]["Type"] === "AWS::Lambda::Function"
       ) {
-        currentVariables =
+        currentVariables = {};
+        if (
           this.serverless.service.provider.compiledCloudFormationTemplate
-            .Resources[lambda].Properties.Environment.Variables;
+            .Resources[lambda].Properties.Environment
+        ) {
+          currentVariables =
+            this.serverless.service.provider.compiledCloudFormationTemplate
+              .Resources[lambda].Properties.Environment.Variables;
+        } else {
+          this.serverless.service.provider.compiledCloudFormationTemplate.Resources[
+            lambda
+          ].Properties.Environment = {};
+        }
         this.serverless.service.provider.compiledCloudFormationTemplate.Resources[
           lambda
         ].Properties.Environment.Variables = {

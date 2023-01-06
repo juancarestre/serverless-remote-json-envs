@@ -52,3 +52,7 @@ E.G:
 ```
 
 ![egssmparametersotre.png](./docs/egssmparametersotre.png)
+
+Lambda envs will end up like this:
+
+![lambdaenvs.png](./docs/lambdaenvs.png)

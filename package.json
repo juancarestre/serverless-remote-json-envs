@@ -41,6 +41,6 @@
   },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/juancarestre/serverless-remote-json-envs"
   }
 }

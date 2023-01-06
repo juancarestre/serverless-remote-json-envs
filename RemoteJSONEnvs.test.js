@@ -337,7 +337,7 @@ describe("RemoteJSONEnvs.js", () => {
     it("should resolve all promises related with ssm", async () => {
       const results = await remoteJSONEnvs.resolveSSM({
         resolve: () => {
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve) => {
             setTimeout(() => {
               resolve("foo");
             }, 300);

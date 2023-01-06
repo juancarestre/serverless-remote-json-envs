@@ -19,10 +19,10 @@ class RemoteJSONEnvs {
     const valuesWithMetadata = this.extractSecrets(secretValues);
     const mergedSecrets = this.mergeSecrets(valuesWithMetadata);
     this.mergeVariables(mergedSecrets);
-    console.log(
-      this.serverless.service.provider.compiledCloudFormationTemplate.Resources
-        .HelloDashworldLambdaFunction.Properties.Environment
-    );
+    // console.log(
+    //   this.serverless.service.provider.compiledCloudFormationTemplate.Resources
+    //     .HelloDashworldLambdaFunction.Properties.Environment
+    // );
   }
 
   mergeVariables(mergedSecrets) {

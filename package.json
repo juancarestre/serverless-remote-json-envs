@@ -1,6 +1,6 @@
 {
   "name": "serverless-remote-json-envs",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Serverless framework plugin for supporting remote JSON files being parsed as environment variables for AWSLambda",
   "main": "RemoteJSONEnvs.js",
   "scripts": {
@@ -42,5 +42,18 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/juancarestre/serverless-remote-json-envs"
-  }
+  },
+  "keywords": [
+    "Serverless remote json envs",
+    "Serverless remote ssm envs",
+    "Serverless remote s3 envs",
+    "Serverless remote ssm s3 envs",
+    "Serverless Framework Plugin",
+    "Serverless Framework",
+    "Serverless",
+    "S3",
+    "SSM",
+    "Environment variables",
+    "Envs"
+  ]
 }

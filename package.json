@@ -1,6 +1,6 @@
 {
   "name": "serverless-remote-json-envs",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Serverless framework plugin for supporting remote JSON files being parsed as environment variables for AWSLambda",
   "main": "RemoteJSONEnvs.js",
   "scripts": {

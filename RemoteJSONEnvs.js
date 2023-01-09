@@ -1,5 +1,7 @@
 "use strict";
 const ssm = require("serverless/lib/configuration/variables/sources/instance-dependent/get-ssm");
+const s3 = require("serverless/lib/configuration/variables/sources/instance-dependent/get-s3");
+
 const ServerlessError = require("serverless/lib/serverless-error");
 
 class RemoteJSONEnvs {
@@ -15,14 +17,41 @@ class RemoteJSONEnvs {
     this.storeConfig = this.getRemoteJSONEnvsConfig(
       this.serverless.configurationInput
     );
-    const secretValues = await this.resolveSSM();
-    const valuesWithMetadata = this.extractSecrets(secretValues);
+    const envValues = await this.resolveEnvs();
+    const valuesWithMetadata = this.extractSecrets(envValues);
     const mergedSecrets = this.mergeSecrets(valuesWithMetadata);
     this.mergeVariables(mergedSecrets);
     // console.log(
     //   this.serverless.service.provider.compiledCloudFormationTemplate.Resources
     //     .HelloDashworldLambdaFunction.Properties.Environment
     // );
+  }
+
+  async resolveEnvs() {
+    let envs = {};
+    if (this.storeConfig.provider == "SSMParameterStore") {
+      envs = await this.resolveSSM();
+    } else if (this.storeConfig.provider == "S3") {
+      envs = await this.resolveS3();
+    }
+
+    return envs;
+  }
+
+  resolveS3(resolver) {
+    let S3Resolver = s3(this.serverless);
+    if (resolver) S3Resolver = resolver;
+    const toResolve = this.storeConfig.keys.map((key) => {
+      return S3Resolver.resolve({ address: key.key });
+    });
+    return Promise.all(toResolve)
+      .then((results) => {
+        results[0].value = JSON.parse(results[0].value);
+        return results;
+      })
+      .catch((e) => {
+        throw new ServerlessError(e);
+      });
   }
 
   mergeVariables(mergedSecrets) {
@@ -118,10 +147,6 @@ class RemoteJSONEnvs {
         )
           throw new ServerlessError(
             `RemoteJSONEnvsPlugin AWS Provider its not correctly configured, SSMParameterStore or S3 are supported`
-          );
-        if (Object.keys(AWSConfig)[0] == "S3")
-          throw new ServerlessError(
-            `RemoteJSONEnvsPlugin AWS S3 its not ready yet`
           );
         const AWSSSMConfig =
           configurationInput.custom.RemoteJSONEnvs.provider.aws[

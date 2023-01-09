@@ -2,13 +2,10 @@
 
 const RemoteJSONEnvs = require("./RemoteJSONEnvs");
 const Serverless = require("serverless/lib/serverless");
-// const chalk = require('chalk')
 const sinon = require("sinon");
 const chai = require("chai");
 const BbPromise = require("bluebird");
-// const Serverless = require('serverless/lib/serverless')
 const AwsProvider = require("serverless/lib/plugins/aws/provider");
-// const ServerlessApigatewayServiceProxy = require('./index')
 const ServerlessError = require("serverless/lib/serverless-error");
 
 chai.use(require("chai-as-promised"));
@@ -107,7 +104,7 @@ describe("RemoteJSONEnvs.js", () => {
       };
     });
 
-    it("should merge normal envs with json envs", async () => {
+    it("should merge normal envs with ssm json envs", async () => {
       serverless.service.provider.compiledCloudFormationTemplate.Resources = {
         HelloDashworldLambdaFunction: {
           Type: "AWS::Lambda::Function",
@@ -142,6 +139,50 @@ describe("RemoteJSONEnvs.js", () => {
             { value: { secretos: { hello1: "mundo1", f2oo1: "bar1" } } },
             { value: { secrets: { hello2: "wordl2", foo2: "bar2to" } } },
             { value: null },
+          ])
+        );
+
+      await expect(remoteJSONEnvs.packageCompile()).to.be.fulfilled.then(() => {
+        expect(
+          serverless.service.provider.compiledCloudFormationTemplate.Resources
+            .HelloDashworldLambdaFunction.Properties.Environment.Variables
+        ).to.deep.equal({ local: "localenv", hello1: "mundo1", f2oo1: "bar1" });
+      });
+    });
+
+    it("should merge normal envs with s3 json envs", async () => {
+      serverless.service.provider.compiledCloudFormationTemplate.Resources = {
+        HelloDashworldLambdaFunction: {
+          Type: "AWS::Lambda::Function",
+          Properties: {
+            Environment: {
+              Variables: { local: "localenv" },
+            },
+          },
+        },
+      };
+
+      (serverless.configurationInput.custom = {
+        RemoteJSONEnvs: {
+          provider: {
+            aws: {
+              S3: [
+                {
+                  key: "mybucket/thisisajson.json",
+                  secretJSONKey: "envs",
+                },
+              ],
+            },
+          },
+        },
+      }),
+        (remoteJSONEnvs = new RemoteJSONEnvs(serverless));
+
+      sinon
+        .stub(remoteJSONEnvs, "resolveS3")
+        .returns(
+          BbPromise.resolve([
+            { value: { envs: { hello1: "mundo1", f2oo1: "bar1" } } },
           ])
         );
 
@@ -198,9 +239,9 @@ describe("RemoteJSONEnvs.js", () => {
         HelloDashworldLambdaFunction: {
           Type: "AWS::Lambda::Function",
           Properties: {
-            Environment: {
-              Variables: {},
-            },
+            // Environment: {
+            //   // Variables: {},
+            // },
           },
         },
       };
@@ -350,6 +391,78 @@ describe("RemoteJSONEnvs.js", () => {
     it("should resolve with error promises related with ssm", () => {
       expect(
         remoteJSONEnvs.resolveSSM({
+          resolve: () => {
+            return new Promise((resolve, reject) => {
+              setTimeout(() => {
+                reject("a");
+              }, 300);
+            });
+          },
+        })
+      ).eventually.rejectedWith(ServerlessError);
+    });
+  });
+
+  describe("resolveS3", () => {
+    beforeEach(() => {
+      serverless = new Serverless({ commands: [], options: {} });
+      serverless.servicePath = true;
+      serverless.service.service = "Hello-world-lambda";
+      serverless.configurationInput = {
+        service: "hola-mundo",
+        provider: {
+          name: "aws",
+          environment: { myjsonsecrets: "the-valueeee" },
+          profile: "x",
+        },
+        custom: {
+          RemoteJSONEnvs: {
+            provider: {
+              aws: {
+                S3: [
+                  {
+                    key: "as3bucket/afile.json",
+                    secretJSONKey: "envs",
+                  },
+                ],
+              },
+            },
+          },
+        },
+        functions: {
+          "hello-world": {
+            handler: "handler.hello",
+            name: "dev-hello-world",
+          },
+        },
+      };
+      serverless.cli = {
+        consoleLog: () => {},
+      };
+      serverless.setProvider("aws", new AwsProvider(serverless));
+      remoteJSONEnvs = new RemoteJSONEnvs(serverless);
+      remoteJSONEnvs.storeConfig = {
+        provider: "S3",
+        keys: [{ key: "as3bucket/afile.json", secretJSONKey: "envs" }],
+      };
+    });
+
+    it("should resolve all promises related with s3", async () => {
+      const results = await remoteJSONEnvs.resolveS3({
+        resolve: () => {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({ value: '{"foo": "bar"}' });
+            }, 300);
+          });
+        },
+      });
+      expect(results).to.be.not.empty;
+    });
+
+    it("should resolve with error promises related with s3", () => {
+      expect(
+        remoteJSONEnvs.resolveS3({
           resolve: () => {
             return new Promise((resolve, reject) => {
               setTimeout(() => {

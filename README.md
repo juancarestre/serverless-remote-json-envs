@@ -13,12 +13,13 @@ serverless plugin install -n serverless-remote-json-envs
 ## Supported AWS services
 
 - SSM ParameterStore
--  S̶3̶ (not ready yet)
+- S3
 
 ## Usage
 
 Define YAML configuration within custom block as:
 
+SSM
 ```YAML
 [...]
 [...]
@@ -33,6 +34,22 @@ custom:
             secretJSONKey: 'secrets'
           - key: /my/secret/three
             secretJSONKey: 'secrets'
+[...]
+[...]
+```
+
+S3
+```YAML
+[...]
+[...]
+custom:
+  RemoteJSONEnvs:
+    provider:
+      aws:
+        S3:
+          - key: mybucketname/myenvsfile.json
+            secretJSONKey: 'secretos'
+
 [...]
 [...]
 ```

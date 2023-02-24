@@ -1,6 +1,7 @@
 "use strict";
 const ssm = require("serverless/lib/configuration/variables/sources/instance-dependent/get-ssm");
 const s3 = require("serverless/lib/configuration/variables/sources/instance-dependent/get-s3");
+const fetch = require('node-fetch');
 
 const ServerlessError = require("serverless/lib/serverless-error");
 
@@ -18,13 +19,14 @@ class RemoteJSONEnvs {
       this.serverless.configurationInput
     );
     const envValues = await this.resolveEnvs();
+    console.log('envValues', envValues)
     const valuesWithMetadata = this.extractSecrets(envValues);
     const mergedSecrets = this.mergeSecrets(valuesWithMetadata);
     this.mergeVariables(mergedSecrets);
-    // console.log(
-    //   this.serverless.service.provider.compiledCloudFormationTemplate.Resources
-    //     .HelloDashworldLambdaFunction.Properties.Environment
-    // );
+    console.log(
+      this.serverless.service.provider.compiledCloudFormationTemplate.Resources
+        .HelloDashworldLambdaFunction.Properties.Environment
+    );
   }
 
   async resolveEnvs() {
@@ -33,9 +35,47 @@ class RemoteJSONEnvs {
       envs = await this.resolveSSM();
     } else if (this.storeConfig.provider == "S3") {
       envs = await this.resolveS3();
+    } else if (this.storeConfig.provider == "HTTPRequest") {
+      envs = await this.resolveHTTPRequest()
     }
+    console.log('envs', envs)
 
     return envs;
+  }
+
+  resolveHTTPRequest(resolver) {
+    let requestConfig = this.storeConfig.keys
+    console.log('this.storeConfig.keys', requestConfig)
+    let toResolve = requestConfig.map(request => {
+      let requestToResolve = {
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'GET',
+        timeout: 7000
+      }
+      if (request.body) requestToResolve.body = request.body
+      return fetch(request.URL, requestToResolve).then(res => {
+        console.log('dammit')
+        if (res.status < 200 || res.status >= 300) {
+          console.log('Unexpected request response', res); // continue here
+          return 'bad';
+        }
+        return res.json()
+
+      });
+    })
+
+    return Promise.all(toResolve)
+      .then((response) => {
+        console.log('results', response)
+        return response.map(res => ({ value: res }))
+      })
+      .catch((e) => {
+        console.log('aaaa error', e)
+        throw new ServerlessError(e);
+      });
+
   }
 
   resolveS3(resolver) {
@@ -134,6 +174,7 @@ class RemoteJSONEnvs {
 
     const RemoteJSONEnvsProvider =
       this.getRemoteJSONEnvsProvider(configurationInput);
+    console.log('RemoteJSONEnvsProvider', RemoteJSONEnvsProvider)
     return RemoteJSONEnvsProvider;
   }
 
@@ -177,6 +218,42 @@ class RemoteJSONEnvs {
           provider: Object.keys(AWSConfig)[0],
           keys: AWSSSMConfig,
         };
+      case "api":
+        const APIConfig = configurationInput.custom.RemoteJSONEnvs.provider.api;
+        if (Object.keys(APIConfig)[0] != "HTTPRequest")
+          throw new ServerlessError(
+            `RemoteJSONEnvsPlugin API Provider its not correctly configured, HTTPRequest are supported`
+          );
+        const HTTPRequestConfig =
+          configurationInput.custom.RemoteJSONEnvs.provider.api[
+            `${Object.keys(APIConfig)[0]}`
+          ];
+        if (!HTTPRequestConfig)
+          throw new ServerlessError(
+            `RemoteJSONEnvs Provider api its not configured`
+          );
+        if (typeof HTTPRequestConfig != "object" || !Array.isArray(HTTPRequestConfig)) {
+          throw new ServerlessError(
+            `RemoteJSONEnvs Provider API ${
+              Object.keys(APIConfig)[0]
+            } its not an array object`
+          );
+        }
+        HTTPRequestConfig.forEach((element) => {
+          if (!element.URL)
+            throw new ServerlessError(
+              `RemoteJSONEnvs Provider api array must contain a URL`
+            );
+          if (typeof element.URL != "string")
+            throw new ServerlessError(
+              `RemoteJSONEnvs Provider api keys are not strings: ${element.key}`
+            );
+        });
+        return {
+          provider: Object.keys(APIConfig)[0],
+          keys: HTTPRequestConfig,
+        };
+
       default:
         throw new ServerlessError(
           `Provider ${

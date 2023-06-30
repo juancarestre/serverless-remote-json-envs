@@ -1,5 +1,5 @@
 # Serverless Remote JSON Envs
-
+eso
 This Serverless Framework Plugin allows to use plain JSON files in remote locations being parsed as environment variables in lambda, this unlocks ability to do integrations with anothers services and/or SSM ParameterStore to save many environment variables in a single parameters key as a JSON.
 
 ## Install
